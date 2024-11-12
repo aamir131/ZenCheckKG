@@ -33,13 +33,18 @@ class KnowledgeGraph:
             fulfill_feature_func(seeker)
     
     def extract_seekers(self):
-        for nodeIds, node in self.nodes.items():
-            if node['BlockType'] == 'WORD':
-                if self.is_seeker(node):
-                    self.seekers.append(Seeker(node['Id'] ,node['Text'], node['Page']))
+        for nodeId, node in self.nodes.items():
+            if node['BlockType'] == 'WORD' and self.nodes[node['ParentId']]['BlockType'] != "CELL" and self.is_seeker(node):
+                parentId = node['ParentId'] if 'ParentId' in node else None
+                grandparentId = self.nodes[parentId]['ParentId'] if parentId != None and 'ParentId' in self.nodes[parentId] else None
+                closest_layout_text_id = nodeId
+                while self.nodes[closest_layout_text_id]['BlockType'] != "LAYOUT_TEXT" and 'ParentId' in self.nodes[closest_layout_text_id]:
+                    closest_layout_text_id = self.nodes[closest_layout_text_id]['ParentId']
+                self.seekers.append(Seeker(node['Id'], node['Text'], node['Page'], 
+                                           parentId, grandparentId, closest_layout_text_id))
     
     def extract_truths(self):
-        for nodeIds, node in self.nodes.items():
+        for nodeId, node in self.nodes.items():
             if node['BlockType'] == "CELL":
                 if "Relationships" in node:
                     child_val = self.nodes[node['Relationships'][0]['Ids'][0]]
