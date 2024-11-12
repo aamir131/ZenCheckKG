@@ -16,11 +16,13 @@ class KnowledgeGraph:
         child_parent = [] # tuple of (child, parent)
         for block in textract_obj:
             self.nodes[block['Id']] = block
-            for rel in block['Relationships']:
+            if not 'Relationships' in block:
+                continue
+            for rel in block['Relationships']: 
                 if rel['Type'] == 'CHILD':
-                    child_parent.append((rel['Ids'][0], block['Id']))
+                    for child in rel['Ids']: child_parent.append((child, block['Id']))
                 elif rel['Type'] == 'PARENT':
-                    child_parent.append((block['Id'], rel['Ids'][0]))
+                    for child in rel['Ids']: child_parent.append((block['Id'], child))
         
         for child, parent in child_parent:
             self.nodes[child]['ParentId'] = parent 
@@ -31,28 +33,31 @@ class KnowledgeGraph:
             fulfill_feature_func(seeker)
     
     def extract_seekers(self):
-        for node in self.nodes:
+        for nodeIds, node in self.nodes.items():
             if node['BlockType'] == 'WORD':
                 if self.is_seeker(node):
                     self.seekers.append(Seeker(node['Id'] ,node['Text'], node['Page']))
     
     def extract_truths(self):
-        for node in self.nodes:
-            if node['BlockType'] == 'WORD':
-                if self.is_truth(node):
-                    self.truths.append(Truther(node['Id'] ,node['Text'], node['Page']))
+        for nodeIds, node in self.nodes.items():
+            if self.is_truth(node):
+                self.truths.append(Truther(node['Id'] ,node['Text'], node['Page']))
     
     def calculate_probabilities(self, attribute_list, labels):
-        for seeker, truths in labels:
+        for seeker, truths in labels.items():
             labels[seeker] = set(truths)
         
+        print(labels)
         attribute_probabilities = {}
         for seeker in self.seekers:
             for truther in self.truths:
+                if not seeker.Id in labels: continue
+                if not truther.Id in labels: continue
                 idx = sum(2 ** i if attribute(seeker, truther, self.nodes) else 0 for i, attribute in enumerate(attribute_list))
-                if idx not in attribute_probabilities: attribute_probabilities[idx] = [0, 0]
-                attribute_probabilities[idx][truther in labels[seeker]] += 1
+                if idx not in attribute_probabilities: attribute_probabilities[idx] = [0.0, 0.0]
+                attribute_probabilities[idx][truther.Id in labels[seeker.Id]] += 1.0
         
+        print(attribute_probabilities)
         for idx in attribute_probabilities:
             attribute_probabilities[idx] = attribute_probabilities[idx][1] / sum(attribute_probabilities[idx]) 
         return attribute_probabilities
