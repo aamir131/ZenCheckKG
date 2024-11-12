@@ -40,24 +40,24 @@ class KnowledgeGraph:
     
     def extract_truths(self):
         for nodeIds, node in self.nodes.items():
-            if self.is_truth(node):
-                self.truths.append(Truther(node['Id'] ,node['Text'], node['Page']))
+            if node['BlockType'] == "CELL":
+                if "Relationships" in node:
+                    child_val = self.nodes[node['Relationships'][0]['Ids'][0]]
+                    if self.is_truth(child_val):
+                        self.truths.append(Truther(node['Id'], child_val['Text'], child_val['Page']))
     
     def calculate_probabilities(self, attribute_list, labels):
         for seeker, truths in labels.items():
             labels[seeker] = set(truths)
         
-        print(labels)
         attribute_probabilities = {}
         for seeker in self.seekers:
             for truther in self.truths:
                 if not seeker.Id in labels: continue
-                if not truther.Id in labels: continue
                 idx = sum(2 ** i if attribute(seeker, truther, self.nodes) else 0 for i, attribute in enumerate(attribute_list))
                 if idx not in attribute_probabilities: attribute_probabilities[idx] = [0.0, 0.0]
                 attribute_probabilities[idx][truther.Id in labels[seeker.Id]] += 1.0
         
-        print(attribute_probabilities)
         for idx in attribute_probabilities:
             attribute_probabilities[idx] = attribute_probabilities[idx][1] / sum(attribute_probabilities[idx]) 
         return attribute_probabilities
