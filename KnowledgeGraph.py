@@ -1,9 +1,11 @@
+from typing import List
 from SeekerTruther import Seeker, Truther
 
 class KnowledgeGraph:
     def __init__(self, is_seeker, is_truth, textract_obj):
         self.is_seeker, self.is_truth = is_seeker, is_truth
-        self.seekers, self.truths = [], []
+        self.seekers: List[Seeker] = []
+        self.truths: List[Truther] = []
 
         self.nodes = {} # amazon textract id: textract dictionary object
         
@@ -34,7 +36,7 @@ class KnowledgeGraph:
     
     def extract_seekers(self):
         for nodeId, node in self.nodes.items():
-            if node['BlockType'] == 'WORD' and self.nodes[node['ParentId']]['BlockType'] != "CELL" and self.is_seeker(node):
+            if  self.is_seeker(node, self):
                 parentId = node['ParentId'] if 'ParentId' in node else None
                 grandparentId = self.nodes[parentId]['ParentId'] if parentId != None and 'ParentId' in self.nodes[parentId] else None
                 closest_layout_text_id = nodeId
@@ -45,11 +47,9 @@ class KnowledgeGraph:
     
     def extract_truths(self):
         for nodeId, node in self.nodes.items():
-            if node['BlockType'] == "CELL":
-                if "Relationships" in node:
-                    child_val = self.nodes[node['Relationships'][0]['Ids'][0]]
-                    if self.is_truth(child_val):
-                        self.truths.append(Truther(node['Id'], child_val['Text'], child_val['Page']))
+            if self.is_truth(node, self):
+                child_val = self.nodes[node['Relationships'][0]['Ids'][0]]
+                self.truths.append(Truther(node['Id'], child_val['Text'], child_val['Page']))
     
     def calculate_probabilities(self, attribute_list, labels):
         for seeker, truths in labels.items():
