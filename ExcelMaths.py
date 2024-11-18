@@ -5,7 +5,7 @@ class ExcelNumber:
         K = 3
         M = 6
         B = 9
-        N = 0
+        Unclear = 0
     
     class Signed(Enum):
         Negative = "-"
@@ -13,10 +13,11 @@ class ExcelNumber:
         Unclear = ""
         
     class QuantityType(Enum):
-        Pounds = "£"
+        Pound = "£"
         Dollar = "$"
         Percentage = "%"
         Unclear = ""
+        Euros = "€"
     
     def tree_equal(self, other):
         if other.n == self.n: return True
@@ -28,34 +29,35 @@ class ExcelNumber:
         return other == self
     
     def initialise_absolutes(self, s: str):
-        print(s[0])
         if s[0] in ExcelNumber.QuantityType:
-            print("in here")
-            self.quantity_type = ExcelNumber.QuantityType[s[0]]
+            self.quantity_type = ExcelNumber.QuantityType(s[0])
             s = s[1:]
+        elif s[-1] == "%":
+            self.quantity_type = ExcelNumber.QuantityType.Percentage
+            s = s[:-1]
+        
         if s[-1] in "kmb":
-            print("over here", " kmb".find(s[-1]) * 3, s[-1])
-            self.scalar_val = ExcelNumber.ScalarType[s[-1].find(" kmb") * 3]
-            s = s[:-2]
-        if any(not i.isdigit() for i in s): raise TypeError("Should be of type number")
+            self.scalar_type = ExcelNumber.ScalarType(" kmb".find(s[-1]) * 3)
+            s = s[:-1]
+        if any((not i.isdigit() and i != ".") for i in s): raise TypeError("Should be of type number")
         self.val = s
         
     def __init__(self, s: str):
         if len(s) == 0: raise TypeError("Empty String Passed to ExcelNumber Type")
         s = s.lower().replace("bn", "b")
-        print(s)
         self.quantity_type: ExcelNumber.QuantityType = ExcelNumber.QuantityType.Unclear
         self.signed_type: ExcelNumber.Signed = ExcelNumber.Signed.Unclear
-        self.val = ""
+        self.scalar_type: ExcelNumber.ScalarType = ExcelNumber.ScalarType.Unclear
+        self.val = None
         
         match s:
             case _ if s[0] == "(" and s[-1] == ")":
                 self.signed_type = ExcelNumber.Signed.Negative
                 self.initialise_absolutes(s[1:-1])
             case _ if s[0] in ExcelNumber.Signed:
-                self.signed_type = ExcelNumber.Signed[s[0]]
+                self.signed_type = ExcelNumber.Signed(s[0])
                 self.initialise_absolutes(s[1:])
-            case _ if all(i.isdigit() for i in s[:-1]) and (s[-1] in "kmb" or s[-1].isdigit()):
+            case _ if (s[0] in ExcelNumber.QuantityType or s[0].isdigit()) and all((i.isdigit() or i == ".") for i in s[1:-1]) and (s[-1] in "kmb%" or s[-1].isdigit()):
                 self.initialise_absolutes(s)
             case _:
                 raise TypeError("Did not match any case")
@@ -63,10 +65,10 @@ class ExcelNumber:
     # TODO: consider the case when they are both not of type percentage
     def percentage_equal(self, other):
         p_type = ExcelNumber.QuantityType.Percentage
-        if self.QuantityType.value == p_type and other.quantity_type.value == p_type:
+        if self.quantity_type.value == p_type and other.quantity_type.value == p_type:
             return ExcelNumber(self.val) == ExcelNumber(other.val)
         
-        if self.QuantityType.value == p_type:
+        if self.quantity_type.value == p_type:
             return ExcelNumber(other.val) in [ExcelNumber(ExcelNumber.divide_by_exp(self.val, 2)), 
                                               ExcelNumber(self.val)]
         return False
@@ -81,24 +83,24 @@ class ExcelNumber:
             return ExcelNumber.divide_by_exp(val.replace(".", ""), exp + len(val) - val.find(".") - 1)
         
     def __eq__(self, other) -> bool:
-        if self.QuantityType == ExcelNumber.QuantityType.Percentage:
+        if self.quantity_type == ExcelNumber.QuantityType.Percentage:
             return self.percentage_equal(other)
-        if self.QuantityType != other.QuantityType: return False
+        if self.quantity_type != other.QuantityType: return False
         
-        if self.Signed.value != ExcelNumber.Signed.Unclear and other.Signed.value != ExcelNumber.Signed.Unclear:
+        if self.Signed != ExcelNumber.Signed.Unclear and other.Signed != ExcelNumber.Signed.Unclear:
             if self.Signed != other.Signed:
                 return False
         
         return ExcelNumber.scalars_equal(other)
         
     def scalars_equal(self, other):
-        s = ExcelNumber(ExcelNumber.divide_by_exp(self.val, 9 - self.scalar_val.value))
+        s = ExcelNumber(ExcelNumber.divide_by_exp(self.val, 9 - self.scalar_type.value))
         o = ExcelNumber(ExcelNumber.divide_by_exp(other.val, 9 - other.scalar_val.value)) 
-        if self.scalar_val.value != 0 and other.scalar_val.value != 0: return s == o
-        if self.scalar_val.value == 0 and other.scalar_val.value == 0:
+        if self.scalar_type.value != 0 and other.scalar_val.value != 0: return s == o
+        if self.scalar_type.value == 0 and other.scalar_val.value == 0:
             k1 = [ExcelNumber(ExcelNumber.divide_by_exp(self.val, 3 * i)) for i in range(0, 4)]
             k2 = [ExcelNumber(ExcelNumber.divide_by_exp(other.val, 3 * i)) for i in range(0, 4)]
             return any(i==j for i in k1 for j in k2)
-        if self.scalar_val.value == 0:
+        if self.scalar_type.value == 0:
             return any(o==ExcelNumber(ExcelNumber.divide_by_exp(self.val, 3*i)) for i in range(4))
         return other == self
