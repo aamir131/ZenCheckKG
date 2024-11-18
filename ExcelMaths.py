@@ -12,7 +12,7 @@ class ExcelNumber:
         Positive = "+"
         Unclear = ""
         
-    class QuantityType:
+    class QuantityType(Enum):
         Pounds = "£"
         Dollar = "$"
         Percentage = "%"
@@ -28,36 +28,42 @@ class ExcelNumber:
         return other == self
     
     def initialise_absolutes(self, s: str):
+        print(s[0])
         if s[0] in ExcelNumber.QuantityType:
+            print("in here")
             self.quantity_type = ExcelNumber.QuantityType[s[0]]
             s = s[1:]
         if s[-1] in "kmb":
+            print("over here", " kmb".find(s[-1]) * 3, s[-1])
             self.scalar_val = ExcelNumber.ScalarType[s[-1].find(" kmb") * 3]
             s = s[:-2]
-        if any(i not in "0123456789" for i in s): raise TypeError("Should be of type number")
+        if any(not i.isdigit() for i in s): raise TypeError("Should be of type number")
         self.val = s
         
     def __init__(self, s: str):
         if len(s) == 0: raise TypeError("Empty String Passed to ExcelNumber Type")
         s = s.lower().replace("bn", "b")
+        print(s)
         self.quantity_type: ExcelNumber.QuantityType = ExcelNumber.QuantityType.Unclear
-        self.signed_type = ExcelNumber.Signed = ExcelNumber.Signed.Unclear
+        self.signed_type: ExcelNumber.Signed = ExcelNumber.Signed.Unclear
         self.val = ""
         
         match s:
             case _ if s[0] == "(" and s[-1] == ")":
                 self.signed_type = ExcelNumber.Signed.Negative
                 self.initialise_absolutes(s[1:-1])
-            case _ if s[0] in "-+":
+            case _ if s[0] in ExcelNumber.Signed:
                 self.signed_type = ExcelNumber.Signed[s[0]]
                 self.initialise_absolutes(s[1:])
-            case _ if all(i in "0123456789" for i in s):
+            case _ if all(i.isdigit() for i in s[:-1]) and (s[-1] in "kmb" or s[-1].isdigit()):
                 self.initialise_absolutes(s)
+            case _:
+                raise TypeError("Did not match any case")
 
     # TODO: consider the case when they are both not of type percentage
     def percentage_equal(self, other):
         p_type = ExcelNumber.QuantityType.Percentage
-        if self.QuantityType.value == p_type and other.QuantityType.value == p_type:
+        if self.QuantityType.value == p_type and other.quantity_type.value == p_type:
             return ExcelNumber(self.val) == ExcelNumber(other.val)
         
         if self.QuantityType.value == p_type:
