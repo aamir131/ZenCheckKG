@@ -18,30 +18,7 @@ class ExcelNumber:
         Percentage = "%"
         Unclear = ""
         Euros = "€"
-    
-    def tree_equal(self, other):
-        if other.n == self.n: return True
-        if "." not in self.n and "." not in other.n: return False
-        if "." in self.n and (len(self.n) - self.n.find(".") >= len(other.n) - other.n.find(".") or "." not in other.n):
-            numbers_after_dot = len(self.n) - self.n.find(".") - 1
-            tree = ([f'%.{i}f' % round(float(self.n)+0.0000000000001, i) for i in range(numbers_after_dot, 0, -1)] + [str(int(round(float(self.n)+0.000000000001, 0)))])
-            return other.n in tree
-        return other == self
-    
-    def initialise_absolutes(self, s: str):
-        if s[0] in ExcelNumber.QuantityType:
-            self.quantity_type = ExcelNumber.QuantityType(s[0])
-            s = s[1:]
-        elif s[-1] == "%":
-            self.quantity_type = ExcelNumber.QuantityType.Percentage
-            s = s[:-1]
-        
-        if s[-1] in "kmb":
-            self.scalar_type = ExcelNumber.ScalarType(" kmb".find(s[-1]) * 3)
-            s = s[:-1]
-        if any((not i.isdigit() and i != ".") for i in s): raise TypeError("Should be of type number")
-        self.val = s
-        
+
     def __init__(self, s: str):
         if len(s) == 0: raise TypeError("Empty String Passed to ExcelNumber Type")
         s = s.lower().replace("bn", "b")
@@ -62,45 +39,63 @@ class ExcelNumber:
             case _:
                 raise TypeError("Did not match any case")
 
-    # TODO: consider the case when they are both not of type percentage
+    def initialise_absolutes(self, s: str):
+        if s[0] in ExcelNumber.QuantityType:
+            self.quantity_type = ExcelNumber.QuantityType(s[0])
+            s = s[1:]
+        elif s[-1] == "%":
+            self.quantity_type = ExcelNumber.QuantityType.Percentage
+            s = s[:-1]
+        
+        if s[-1] in "kmb":
+            self.scalar_type = ExcelNumber.ScalarType(" kmb".find(s[-1]) * 3)
+            s = s[:-1]
+        if any((not i.isdigit() and i != ".") for i in s): raise TypeError("Should be of type number")
+        self.val = s
+
+    def tree_equal_str(a: str, b: str):
+        if a == b: return True
+        if "." not in a + b: return False
+        if "." in a and (len(a) - a.find(".") >= len(b) - b.find(".") or "." not in b):
+            numbers_after_dot = len(a) - a.find(".") - 1
+            tree = ([f'%.{i}f' % round(float(a)+0.0000000000001, i) for i in range(numbers_after_dot, 0, -1)] + [str(int(round(float(a)+0.000000000001, 0)))])
+            return b in tree
+        return ExcelNumber.tree_equal_str(b, a)
+        
     def percentage_equal(self, other):
         p_type = ExcelNumber.QuantityType.Percentage
         if self.quantity_type.value == p_type and other.quantity_type.value == p_type:
-            return ExcelNumber(self.val) == ExcelNumber(other.val)
+            return ExcelNumber.tree_equal_str(self.val, other.val)
         
-        if self.quantity_type.value == p_type:
-            return ExcelNumber(other.val) in [ExcelNumber(ExcelNumber.divide_by_exp(self.val, 2)), 
-                                              ExcelNumber(self.val)]
-        return False
+        a, b = (self.val, other.val) if self.quantity_type == p_type else (other.val, self.val)
+        return any(ExcelNumber.tree_equal_str(a, x) for x in [b, ExcelNumber.divide_by_exp(b, 2)])
         
-    def divide_by_exp(val: str, exp: int):
+    def divide_by_exp(val: str, exp: int) -> str:
         if exp == 0: return val
         if not "." in val:
             if exp < len(val):
                 return val[:-exp] + "." +val[-exp:]
             return "0." + "0" * (exp - len(val)) + val
-        if "." in val:
-            return ExcelNumber.divide_by_exp(val.replace(".", ""), exp + len(val) - val.find(".") - 1)
+        return ExcelNumber.divide_by_exp(val.replace(".", ""), exp + len(val) - val.find(".") - 1)
         
     def __eq__(self, other) -> bool:
         if self.quantity_type == ExcelNumber.QuantityType.Percentage:
             return self.percentage_equal(other)
-        if self.quantity_type != other.QuantityType: return False
+        if len({self.quantity_type, other.quantity_type} - {ExcelNumber.QuantityType.Unclear}) > 1:
+            return False
+        if len({self.signed_type, other.signed_type} - {ExcelNumber.Signed.Unclear}) > 1:
+            return False
         
-        if self.Signed != ExcelNumber.Signed.Unclear and other.Signed != ExcelNumber.Signed.Unclear:
-            if self.Signed != other.Signed:
-                return False
-        
-        return ExcelNumber.scalars_equal(other)
+        return self.scalars_equal(other)
         
     def scalars_equal(self, other):
-        s = ExcelNumber(ExcelNumber.divide_by_exp(self.val, 9 - self.scalar_type.value))
-        o = ExcelNumber(ExcelNumber.divide_by_exp(other.val, 9 - other.scalar_val.value)) 
-        if self.scalar_type.value != 0 and other.scalar_val.value != 0: return s == o
-        if self.scalar_type.value == 0 and other.scalar_val.value == 0:
-            k1 = [ExcelNumber(ExcelNumber.divide_by_exp(self.val, 3 * i)) for i in range(0, 4)]
-            k2 = [ExcelNumber(ExcelNumber.divide_by_exp(other.val, 3 * i)) for i in range(0, 4)]
-            return any(i==j for i in k1 for j in k2)
+        s = ExcelNumber.divide_by_exp(self.val, 9 - self.scalar_type.value)
+        o = ExcelNumber.divide_by_exp(other.val, 9 - other.scalar_type.value)
+        if self.scalar_type.value != 0 and other.scalar_type.value != 0: return ExcelNumber.tree_equal_str(s, o)
+        if self.scalar_type.value == 0 and other.scalar_type.value == 0:
+            k1 = [ExcelNumber.divide_by_exp(self.val, 3 * i) for i in range(0, 4)]
+            k2 = [ExcelNumber.divide_by_exp(other.val, 3 * i) for i in range(0, 4)]
+            return any(ExcelNumber.tree_equal_str(i, j) for i in k1 for j in k2)
         if self.scalar_type.value == 0:
-            return any(o==ExcelNumber(ExcelNumber.divide_by_exp(self.val, 3*i)) for i in range(4))
+            return any(ExcelNumber.tree_equal_str(o, ExcelNumber.divide_by_exp(self.val, 3*i)) for i in range(4))
         return other == self

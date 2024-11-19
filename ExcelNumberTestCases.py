@@ -16,7 +16,7 @@ class ExcelNumberTestCase:
         self.expected_quantity_type = expected_quantity_type
         self.expected_scalar_type = expected_scalar_type
         self.expected_signed_type = expected_signed_type
-        
+    
 test_cases : List[ExcelNumberTestCase] = [
     # Basic numbers without any symbols
     ExcelNumberTestCase("1", "1" ,ExcelNumber.QuantityType.Unclear, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Unclear),
@@ -50,11 +50,6 @@ test_cases : List[ExcelNumberTestCase] = [
     ExcelNumberTestCase("0k", "0", ExcelNumber.QuantityType.Unclear, ExcelNumber.ScalarType.K, ExcelNumber.Signed.Unclear),
     ExcelNumberTestCase("(0)", "0", ExcelNumber.QuantityType.Unclear, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Negative),
     ExcelNumberTestCase("(0%)", "0", ExcelNumber.QuantityType.Percentage, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Negative),
-    
-    # Invalid or unclear cases
-    #ExcelNumberTestCase("", ExcelNumber.QuantityType.Unclear, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Unclear),  # Empty string (should raise error)
-    #ExcelNumberTestCase("abc", ExcelNumber.QuantityType.Unclear, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Unclear),  # Invalid input
-    #ExcelNumberTestCase("£abc", ExcelNumber.QuantityType.Pound, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Unclear),  # Invalid number
 ]
 
 test_cases += [
@@ -92,12 +87,6 @@ test_cases += [
     ExcelNumberTestCase("999999k", "999999", ExcelNumber.QuantityType.Unclear, ExcelNumber.ScalarType.K, ExcelNumber.Signed.Unclear),
     ExcelNumberTestCase("123456789m", "123456789", ExcelNumber.QuantityType.Unclear, ExcelNumber.ScalarType.M, ExcelNumber.Signed.Unclear),
     ExcelNumberTestCase("-999999b", "999999", ExcelNumber.QuantityType.Unclear, ExcelNumber.ScalarType.B, ExcelNumber.Signed.Negative),
-
-    # Invalid cases (commented out as they should raise errors)
-    # ExcelNumberTestCase("", "", ExcelNumber.QuantityType.Unclear, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Unclear),  # Empty string
-    # ExcelNumberTestCase("abc", "", ExcelNumber.QuantityType.Unclear, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Unclear),  # Invalid input
-    # ExcelNumberTestCase("£1.2.3", "", ExcelNumber.QuantityType.Pound, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Unclear),  # Invalid number with multiple decimals
-    # ExcelNumberTestCase("£%", "", ExcelNumber.QuantityType.Pound, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Unclear),  # Invalid symbol combination
 ]
 
 test_cases += [
@@ -121,4 +110,47 @@ test_cases += [
 
     # Numbers with scalars and percentages combined
     ExcelNumberTestCase("(0.5%)", "0.5", ExcelNumber.QuantityType.Percentage, ExcelNumber.ScalarType.Unclear, ExcelNumber.Signed.Negative),
+]
+
+equality_checks = [
+    # Percentages
+    ("0.5%", "0.5"),  # Percentage value matches its non-percentage equivalent
+    ("-0.5%", "(0.5%)"),  # Negative percentage matches parentheses
+    ("(0.5%)", "-0.5%"),  # Parentheses imply negative
+
+    # Scalars and rounding
+    ("3m", "3000k"),  # 3 million matches 3000k
+    ("3m", "3000"),  # 3 million matches 3000
+    ("0.075bn", "(75m)"),  # 0.075 billion matches negative 75 million
+    ("(75m)", "-0.075bn"),  # Parentheses imply negative
+    ("(75m)", "0.075bn"),  # Parentheses imply negative
+    ("1.5b", "1500m"),  # 1.5 billion matches 1500 million
+    ("0.0001b", "0.1m"),  # 0.0001 billion matches 0.1 million
+    ("(0.0001b)", "-0.1m"),  # Negative equivalence with scalars
+
+    # Rounding with precision
+    ("0.075bn", "0.08bn"),  # Rounds to 0.08bn
+    ("0.075bn", "0.1bn"),  # Also rounds to 0.1bn
+    ("0.10bn", "0.103bn"),  # Precision-specific match
+    ("0.10bn", "0.104bn"),  # Precision-specific match
+
+    # Signed numbers
+    ("5", "+5"),  # Unsigned matches positive
+    ("5", "-5"),  # Unsigned matches negative
+    ("+5", "5"),  # Positive matches unsigned
+    ("-5", "5"),  # Negative matches unsigned
+    ("(5)", "-5"),  # Parentheses imply negative
+
+    # Currency types
+    ("£2", "2"),  # Pound matches numeric
+    ("$2", "2"),  # Dollar matches numeric
+    ("€2", "2"),  # Euro matches numeric
+
+    # Mixed examples
+    ("£1.5m", "1.5m"),  # Currency matches numeric
+    ("(£1.5m)", "-1.5m"),  # Negative pound matches negative numeric
+    ("0.5k", "500"),  # Scalar matches its numeric equivalent
+    ("0.075bn", "(75m)"),  # Rounding with scalar and sign consistency
+    ("1.000b", "1000m"),  # Precision-based match for billion to million
+    ("(1.000b)", "-1000m"),  # Negative scalar match
 ]

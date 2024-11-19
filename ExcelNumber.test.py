@@ -1,6 +1,6 @@
 import unittest
 from ExcelMaths import ExcelNumber
-from ExcelNumberTestCases import test_cases
+from ExcelNumberTestCases import test_cases, equality_checks
 
 class TestExcelMaths(unittest.TestCase):
     def test_multiple_initializations(self):
@@ -18,10 +18,11 @@ class TestExcelMaths(unittest.TestCase):
                                  f"Signed type mismatch for {case.param}: {e_num.signed_type} != {case.expected_signed_type}")                
     
     def test_numbers_equal(self):
-        for case in test_cases_equal:
-            with self.subTest(a = case.param1, b = case.param2):
-                e_num1 = ExcelNumber(s = case.param1)
-                e_num2 = ExcelNumber(s = case.param2)
+        for case in equality_checks:
+            with self.subTest(a = case[0], b = case[1]):
+                e_num1 = ExcelNumber(s = case[0])
+                e_num2 = ExcelNumber(s = case[1])
+                self.assertTrue(e_num1 == e_num2)
             
                 
 if __name__ == '__main__':
