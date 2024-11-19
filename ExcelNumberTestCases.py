@@ -115,6 +115,7 @@ test_cases += [
 equality_checks = [
     # Percentages
     ("0.5%", "0.5"),  # Percentage value matches its non-percentage equivalent
+    ("0.5", "0.51%"),  # Percentage value matches its non-percentage equivalent
     ("-0.5%", "(0.5%)"),  # Negative percentage matches parentheses
     ("(0.5%)", "-0.5%"),  # Parentheses imply negative
 
@@ -152,5 +153,80 @@ equality_checks = [
     ("0.5k", "500"),  # Scalar matches its numeric equivalent
     ("0.075bn", "(75m)"),  # Rounding with scalar and sign consistency
     ("1.000b", "1000m"),  # Precision-based match for billion to million
-    ("(1.000b)", "-1000m"),  # Negative scalar match
+    ("(1.000b)", "-1000m"),  # Negative scalar match,
+    ("3m", "3001k"),
+    ("0.01", "1%"),
+    ("3m", "3001k"),  # Slightly off in thousands
+    ("3m", "2999"),  # Slight mismatch in base numbers
+    ("0.10bn", "0.1011bn"),
+    ("0.10bn", "0.103bn"),
+    ("0.5k", "501"),  # Scalar and numeric mismatch
+    ("(0)", "0.1"),  # Parentheses zero vs a small value
+]
+
+neq_checks = [
+    # Percentages
+    ("1%", "0.02"),  # 1% vs 0.02 (Mismatch)
+    ("50%", "0.51"),  # 50% vs 0.51 (Mismatch)
+    ("(0.5%)", "0.6%"),  # -0.5% vs 0.6% (Mismatch)
+
+    # Scalars and rounding
+    ("0.075bn", "0.074bn"),  # Slightly off in billions
+    ("0.100bn", "0.101bn"), 
+
+    # Signed numbers
+    ("+5", "-5"),  # Explicit positive vs explicit negative
+    ("+5", "(5)"),  # Explicit positive vs implicit negative
+    ("+5", "-5.01"),  # Explicit positive vs slightly different negative
+
+    # Currency types
+    ("£2", "$2"),  # Different currencies
+    ("€2", "£2"),  # Different currencies
+    ("£1.5m", "$1.5m"),  # Mismatched currencies with scalars
+
+    # Mixed examples
+    ("1.000b", "999m"),  # Slightly off in large numbers
+    ("1.5b", "1.5m"),  # Billion vs million
+    ("(0.0001b)", "0.2m"),  # Scalar mismatch in small values
+
+    # Edge cases
+    ("£0", "$0"),  # Zero with different currencies
+    ("(0)", "+0"),  # Negative zero vs explicit positive zero
+    ("(5)", "+5"),  # Negative parentheses vs explicit positive
+]
+
+
+neq_checks += [
+    # Percentages
+    ("1%", "0.02"),  # 1% vs 0.02 (Mismatch)
+    ("50%", "0.51"),  # 50% vs 0.51 (Mismatch)
+    ("(0.5%)", "0.6%"),  # -0.5% vs 0.6% (Mismatch)
+
+    # Scalars and rounding
+    ("0.075bn", "0.074bn"),  # Slightly off in billions
+    ("0.100bn", "0.1011bn"),  # Too precise to match 0.100bn
+    ("0.10bn", "0.109bn"),  # 0.109bn rounds to 0.11bn, not 0.10bn
+    ("0.10bn", "0.105bn"),  # 0.105bn rounds to 0.11bn, not 0.10bn
+    ("1.000b", "1.001b"),  # Rounding mismatch at 3 decimal places
+    ("1.000b", "1.002b"),  # Cannot reconcile values even when rounded
+
+    # Signed numbers
+    ("+5", "-5"),  # Explicit positive vs explicit negative
+    ("+5", "(5)"),  # Explicit positive vs implicit negative
+    ("+5", "-5.01"),  # Explicit positive vs slightly different negative
+
+    # Currency types
+    ("£2", "$2"),  # Different currencies
+    ("€2", "£2"),  # Different currencies
+    ("£1.5m", "$1.5m"),  # Mismatched currencies with scalars
+
+    # Mixed examples
+    ("1.000b", "999m"),  # Slightly off in large numbers
+    ("1.5b", "1.5m"),  # Billion vs million
+    ("(0.0001b)", "0.2m"),  # Scalar mismatch in small values
+
+    # Edge cases
+    ("£0", "$0"),  # Zero with different currencies
+    ("(0)", "+0"),  # Negative zero vs explicit positive zero
+    ("(5)", "+5"),  # Negative parentheses vs explicit positive
 ]

@@ -1,6 +1,6 @@
 import unittest
 from ExcelMaths import ExcelNumber
-from ExcelNumberTestCases import test_cases, equality_checks
+from ExcelNumberTestCases import test_cases, equality_checks, neq_checks
 
 class TestExcelMaths(unittest.TestCase):
     def test_multiple_initializations(self):
@@ -23,6 +23,13 @@ class TestExcelMaths(unittest.TestCase):
                 e_num1 = ExcelNumber(s = case[0])
                 e_num2 = ExcelNumber(s = case[1])
                 self.assertTrue(e_num1 == e_num2)
+                
+    def test_numbers_not_equal(self):
+        for case in neq_checks:
+            with self.subTest(a = case[0], b = case[1]):
+                e_num1 = ExcelNumber(s = case[0])
+                e_num2 = ExcelNumber(s = case[1])
+                self.assertFalse(e_num1 == e_num2)
             
                 
 if __name__ == '__main__':

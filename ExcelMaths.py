@@ -21,7 +21,7 @@ class ExcelNumber:
 
     def __init__(self, s: str):
         if len(s) == 0: raise TypeError("Empty String Passed to ExcelNumber Type")
-        s = s.lower().replace("bn", "b")
+        s = s.lower().replace("bn", "b").replace(",", "").replace(" ", "")
         self.quantity_type: ExcelNumber.QuantityType = ExcelNumber.QuantityType.Unclear
         self.signed_type: ExcelNumber.Signed = ExcelNumber.Signed.Unclear
         self.scalar_type: ExcelNumber.ScalarType = ExcelNumber.ScalarType.Unclear
@@ -67,7 +67,7 @@ class ExcelNumber:
         if self.quantity_type.value == p_type and other.quantity_type.value == p_type:
             return ExcelNumber.tree_equal_str(self.val, other.val)
         
-        a, b = (self.val, other.val) if self.quantity_type == p_type else (other.val, self.val)
+        b, a = (self.val, other.val) if self.quantity_type == p_type else (other.val, self.val)
         return any(ExcelNumber.tree_equal_str(a, x) for x in [b, ExcelNumber.divide_by_exp(b, 2)])
         
     def divide_by_exp(val: str, exp: int) -> str:
@@ -79,12 +79,13 @@ class ExcelNumber:
         return ExcelNumber.divide_by_exp(val.replace(".", ""), exp + len(val) - val.find(".") - 1)
         
     def __eq__(self, other) -> bool:
-        if self.quantity_type == ExcelNumber.QuantityType.Percentage:
-            return self.percentage_equal(other)
         if len({self.quantity_type, other.quantity_type} - {ExcelNumber.QuantityType.Unclear}) > 1:
             return False
         if len({self.signed_type, other.signed_type} - {ExcelNumber.Signed.Unclear}) > 1:
             return False
+        
+        if {ExcelNumber.QuantityType.Percentage} <= {self.quantity_type, other.quantity_type}:
+            return self.percentage_equal(other)
         
         return self.scalars_equal(other)
         
